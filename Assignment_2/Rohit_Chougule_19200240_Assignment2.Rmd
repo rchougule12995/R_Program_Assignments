@@ -1,0 +1,219 @@
+---
+title: "Assignment 2"
+author: "Rohit Jyotiba Chougule & 19200240"
+date: "04/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Question 1:
+
+Complete your assignment using R Markdown, check that all the output and code are correctly shown in your final document. Knit your document frequently to fix errors. Once completed, submit the Rmd file and the resulting pdf or word document which shows all your code.
+
+```{r Question1}
+# No code here
+```
+
+## Question 2:
+
+Load in the data as an object called DublinAirport. Notice that you have to skip the first 19 lines contained in the file before beginning to read data. Line 20 contains the column names. Display the structure of the dataset.
+
+```{r Question2}
+DublinAirport <- read.csv(file = "mly532.csv", skip = 19)
+#head(DublinAirport)
+str(DublinAirport, strict.width="wrap")
+
+head(DublinAirport$month)
+
+```
+
+## Question 3:
+
+Transform the column months to a factor with labels given by the month names. [Two hints: (1) look at the arguments levels and labels of the function factor. (2) you may want to make use of the built-in constant month.name]
+
+```{r Question3}
+#?factor
+Month_Name <- factor(DublinAirport$month, labels = month.name)
+DublinAirport$month <- Month_Name
+head(DublinAirport)
+
+#head(DublinAirport$month)
+```
+
+## Question 4:
+
+Use the aggregate function to compute which month has on average the highest and the lowest Precipitation Amount.
+
+```{r Question4}
+head(DublinAirport)
+
+Avg_Precipitation <- aggregate(DublinAirport$rain, list(DublinAirport$month), mean, na.rm=TRUE)
+Avg_Precipitation <- order(Avg_Precipitation[,2])
+
+print(paste0(month.name[Avg_Precipitation[length(Avg_Precipitation)]], " is the month with average highest precipitation amount"))
+
+print(paste0(month.name[Avg_Precipitation[1]], " is the month with average lowest precipitation amount"))
+
+```
+
+
+## Question 5
+
+Create a new column which contains a factor indicating the season:
+
+* Winter: December, January, February,
+
+* Spring: March, April, May,
+
+* Summer: June, July, August,
+
+* Autumn: September, October, November
+
+[Hint: again, look at the arguments levels and labels of the function factor.]
+
+```{r Question5}
+#install.packages("zoo")
+library(zoo)
+
+Year_qtr <- as.yearqtr(as.numeric(DublinAirport$month))/12
+DublinAirport$season <- factor(format(Year_qtr, "%q"), levels = 1:4, labels = c("Winter", "Spring", "Summer", "Autumn"))
+head(DublinAirport$season)
+
+#head(DublinAirport)
+```
+
+
+## Question 6
+
+```{r Question6}
+
+class(DublinAirport) <- c('WeatherData', 'data.frame')
+
+str(DublinAirport)
+
+```
+
+## Question 7
+
+Write an S3 summary method for an object of class WeatherData which produces the following statistical summaries the rain, maxtp, mintp, maxgt variables split by season: mean, standard deviation, minimum, maximum. Ignore the missing values in the calculations.
+
+Test your function on the DublinAirport data set and comment your findings.
+
+```{r Question7, comment=NA}
+
+#?data.frame
+summary.WeatherData <- function(Object)
+{
+  Season <- c('winter', 'spring', 'summer', 'autumn')
+
+  temp_df <- data.frame(Season)
+
+  rain <- split(Object$rain, Object$season)
+  maxtp <- split(Object$maxtp, Object$season)
+  mintp <- split(Object$mintp, Object$season)
+  maxgt <- split(Object$maxgt, Object$season)
+
+  summary_func <- c('mean', 'sd', 'max', 'min')
+
+  for(i in 1:length(summary_func)){
+    temp_df[paste('rain.',summary_func[i])] <- data.frame(sapply(rain, summary_func[i], na.rm=TRUE))
+    temp_df[paste('maxtp.',summary_func[i])] <- data.frame(sapply(maxtp, summary_func[i], na.rm=TRUE))
+    temp_df[paste('mintp.',summary_func[i])] <- data.frame(sapply(mintp, summary_func[i], na.rm=TRUE))
+    temp_df[paste('maxgt.',summary_func[i])] <- data.frame(sapply(maxgt, summary_func[i], na.rm=TRUE))
+  }
+  print(temp_df, row.names = FALSE)
+}
+
+summary.WeatherData(DublinAirport)
+```
+
+## Comments from the summarized data:
+From the summary of the data for all these years, it seems that the highest rainfall in Dublin is during the with winters, where as the mean rainfall during the overall seasons seem to be same for winters and summers. However, its during the autumn that the overall season mean is the highest.
+The mean temperature in Dublin ranges from -3 to 23 during overall seasons. The lowest ofcourse during winters, mean being around -3. The maximum temperature during summers goes up to 23.
+The mean windspeed seems to be almost the same across all seasons, however, summer being the lowest and winter being the highest.
+
+## Question 8
+Create an S3 plot method for the class WeatherData that produces the following plots.
+
+(1) Plot of the monthly Air Temperature (C) (maxtp, mintp).
+
+(2) Plot of the Precipitation Amount (mm) (rain).
+
+(3) Plot of the Highest Gust (knot) (maxgt).
+
+- The user must be able to decide which years to plot. By default it will use the data from 2015 until 2018.
+
+- The user must be able to decide which plot to draw (i.e, only one of the three, two of the three, or all three plots). By default the function will create all three plots.
+
+- The plots must be on a single panel.
+
+- The plots must have meaningful labels and/or titles, and a legend if needed.
+
+- Test your function on the DublinAirport data set.
+
+```{r Question8, warning=FALSE}
+plot.WeatherData <- function(my_Object, year_start = 2015, year_end=2018, plot_data = 0){
+
+temp_data <- my_Object[which(my_Object$year >= year_start & my_Object$year <= year_end),]
+
+title <- ''
+xlabel <- 'Year-Month'
+ylabel <- 'Value'
+
+if (plot_data == 0){
+temp_data <- temp_data[,c('rain', 'maxtp', 'mintp', 'maxgt')]
+title <- paste0('Plot of of all features for years:',
+year_start,'-',year_end)
+}
+
+if (plot_data == 1){
+temp_data <- temp_data[,c('maxtp', 'mintp')]
+title <- paste0('Plot of maxtp and mintp for years:',
+year_start,'-',year_end)
+}
+
+if (plot_data == 2){
+temp_data <- temp_data[,c('rain'), drop=FALSE]
+title <- paste0('Plot of rain between for years:',
+year_start,'-',year_end)
+}
+
+if (plot_data == 3){
+temp_data <- temp_data[,c('maxgt'), drop=FALSE]
+title <- paste0('Plot of maxgt for years:',
+year_start,'-',year_end)
+}
+
+DataSet.TS <- ts(temp_data,start=c(year_start,1),
+end = c(year_end,12),frequency=12)
+
+plot(DataSet.TS, plot.type="single", col = 1:ncol(DataSet.TS), main = title, xlab = xlabel, 
+ylab = ylabel , at = as.yearmon(time(DataSet.TS)), labels =as.yearmon(time(DataSet.TS)))
+legend("topright", colnames(DataSet.TS), col=1:ncol(temp_data), lty=1, cex=1)
+}
+
+# When plot_data = 0, the default condition, all graphs are printed
+#When the user sets plot_data = 1 it plots monthly data for air temperature
+#When the user sets plot_data = 2 it plots monthly data for rain (percipitation) amount in mm
+#When the user sets plot_data = 3 it plots monthly data for highest gust in knots
+
+plot.WeatherData(DublinAirport, 2015, 2018, 0)
+
+plot.WeatherData(DublinAirport, 2015, 2018, 1)
+
+plot.WeatherData(DublinAirport, 2015, 2018, 2)
+
+plot.WeatherData(DublinAirport, 2015, 2018, 3)
+
+
+```
+
+
+
+
+
+
+
+
